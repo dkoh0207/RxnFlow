@@ -121,6 +121,22 @@ class SynthesisEnv(GraphBuildingEnv):
             if mol is None:
                 raise ValueError(f"Invalid scaffold SMILES: {scaffold_smi!r}")
             self.scaffold_smi: str | None = Chem.MolToSmiles(mol)
+
+            # The forward sampler enters the non-empty branch in env_context.create_masks()
+            # on step 0, so the seed must match at least one UniRxn or BiRxn template.
+            # Otherwise the action mask is all-zero and policy sampling crashes.
+            if not (
+                any(p.rxn.is_reactant(mol) for p in self.unirxn_list)
+                or any(p.rxn.is_reactant(mol, 0) for p in self.birxn_list)
+            ):
+                raise ValueError(
+                    f"Scaffold {self.scaffold_smi!r} matches no UniRxn or BiRxn template "
+                    f"in env {self.env_dir} (templates: {reaction_template_path}). "
+                    "Choose a seed carrying at least one reactive functional group "
+                    "(e.g., primary amine, carboxylic acid, aryl/alkyl halide, alcohol, "
+                    "aldehyde, isocyanate, sulfonyl chloride). Examples: 'Nc1ccccc1', "
+                    "'OC(=O)c1ccccc1', 'Brc1ccccc1'."
+                )
         else:
             self.scaffold_smi = None
 

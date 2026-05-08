@@ -86,6 +86,15 @@ Both hyphenated and underscored long flags are accepted (e.g. `--out-dir` and `-
 
 Vina optimization with GPU-accelerated UniDock.
 
+Run example training:
+```bash
+rxnflow train unidock-moo -p ./data/examples/6oim_protein.pdb -l ./data/examples/6oim_ligand.pdb -o ./log/kras_moo_qed_init/ --initial-scaffold c1cccc1 --pretrained-model 'qed-unif-0-64'
+```
+Test on ATX:
+```bash
+rxnflow train unidock-moo -p ./data/examples/6LEH.pdb -c 13.09 38.21 13.50 -s 20 20 24 -o ./log/atx_moo_qed
+```
+
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `-p, --protein` | path (required) | — | Protein PDB path. |
@@ -98,6 +107,7 @@ Vina optimization with GPU-accelerated UniDock.
 | `-o, --out-dir` | path (required) | — | Output / log directory. |
 | `-n, --num-iterations` | int | `1000` | Training iterations (64 mols/iter). |
 | `--subsampling-ratio` | float | `0.02` | Action subsampling ratio (lower = less memory, higher variance). |
+| `--initial-scaffold` | SMILES | — | Seed every trajectory from this scaffold molecule (canonicalized via RDKit) instead of the blank state; reaction templates extend forward from here. |
 | `--pretrained-model` | str | — | Pretrained model name or path (auto-download by name). |
 | `--wandb` | str | — | wandb job name (enables wandb when set). |
 | `--debug` | flag | off | Overwrite existing experiment dir. |
@@ -117,6 +127,7 @@ Vina-QED multi-objective optimization with GPU-accelerated UniDock (multiplicati
 | `-o, --out-dir` | path (required) | — | Output / log directory. |
 | `-n, --num-iterations` | int | `1000` | Training iterations. |
 | `--subsampling-ratio` | float | `0.02` | Action subsampling ratio. |
+| `--initial-scaffold` | SMILES | — | Seed every trajectory from this scaffold molecule (canonicalized via RDKit) instead of the blank state. |
 | `--pretrained-model` | str | — | Pretrained model name or path. |
 | `--wandb` | str | — | wandb job name. |
 | `--debug` | flag | off | Overwrite existing experiment dir. |
@@ -136,6 +147,7 @@ Vina-QED multi-objective optimization via MOGFN (`R = α·QED + (1-α)·Vina_nor
 | `-o, --out-dir` | path (required) | — | Output / log directory. |
 | `-n, --num-iterations` | int | `1000` | Training iterations. |
 | `--subsampling-ratio` | float | `0.02` | Action subsampling ratio. |
+| `--initial-scaffold` | SMILES | — | Seed every trajectory from this scaffold molecule (canonicalized via RDKit) instead of the blank state. |
 | `--wandb` | str | — | wandb job name. |
 | `--debug` | flag | off | Overwrite existing experiment dir. |
 
@@ -219,6 +231,7 @@ Inference sampling from a checkpoint produced by `rxnflow train unidock` (or its
 | `-o, --out-path` | path (required) | — | Output path (`.csv` enables docking score; `.smi` writes SMILES only). |
 | `--env-dir` | path | (from checkpoint) | Override environment directory. |
 | `--subsampling-ratio` | float | `0.1` | Action subsampling ratio (higher = more exploitation). |
+| `--initial-scaffold` | SMILES | — | Seed every sampled trajectory from this scaffold molecule (canonicalized via RDKit) instead of the blank state. |
 | `--cuda` | flag | off | Use CUDA acceleration. |
 | `-p, --protein` | path | (from checkpoint) | Override protein PDB. |
 | `-c, --center X Y Z` | 3 floats | (from checkpoint) | Override pocket center. |
