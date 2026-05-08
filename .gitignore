@@ -3,6 +3,7 @@ data/building_blocks/
 data/envs/
 data/experiments/
 logs/
+log/
 weights/
 wandb*
 *.pdbqt
@@ -95,6 +96,10 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
+
+# Local-only project files
+CLAUDE.md
 
 # IPython
 profile_default/
