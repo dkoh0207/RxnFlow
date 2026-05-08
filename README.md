@@ -24,19 +24,21 @@ We will release our **in-house model architecture** used in Hyper Screening X so
 
 ### Installation
 
+> **RTX 50-series / Blackwell (sm_120):** This fork targets PyTorch 2.8.0 + CUDA 12.9 to support the RTX 5090 and other Blackwell GPUs. The UniDock conda binary is bumped to 1.1.3 (cuda129 build) since 1.1.2 has no Blackwell variant. For Ampere/Ada/Hopper GPUs, the upstream pin (torch 2.5.1+cu121, unidock 1.1.2) still works — replace `torch-2.8.0+cu129` with `torch-2.5.1+cu121` and the unidock line with `conda install unidock==1.1.2`.
+
 ```bash
 # python>=3.12,<3.13
-pip install -e . --find-links https://data.pyg.org/whl/torch-2.5.1+cu121.html
+pip install -e . --find-links https://data.pyg.org/whl/torch-2.8.0+cu129.html
 
 # For GPU-accelerated UniDock(Vina) scoring.
-conda install unidock==1.1.2
-pip install -e '.[unidock]' --find-links https://data.pyg.org/whl/torch-2.5.1+cu121.html
+conda install -c conda-forge 'unidock=1.1.3=cuda129*'
+pip install -e '.[unidock]' --find-links https://data.pyg.org/whl/torch-2.8.0+cu129.html
 
 # For Pocket conditional generation
-pip install -e '.[pmnet]' --find-links https://data.pyg.org/whl/torch-2.5.1+cu121.html
+pip install -e '.[pmnet]' --find-links https://data.pyg.org/whl/torch-2.8.0+cu129.html
 
 # Install all dependencies
-pip install -e '.[unidock,pmnet,dev]' --find-links https://data.pyg.org/whl/torch-2.5.1+cu121.html
+pip install -e '.[unidock,pmnet,dev]' --find-links https://data.pyg.org/whl/torch-2.8.0+cu129.html
 ```
 
 ### Data Preparation
