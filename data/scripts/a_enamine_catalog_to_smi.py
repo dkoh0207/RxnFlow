@@ -13,9 +13,25 @@ def main(block_path: str, save_block_path: str, num_cpus: int):
     print("Read SDF Files")
     with block_file.open() as f:
         lines = f.readlines()
-    smiles_list = [lines[i].strip() for i in tqdm(range(1, len(lines))) if lines[i - 1].startswith(">  <smiles>")]
-    ids = [lines[i].strip() for i in tqdm(range(1, len(lines))) if lines[i - 1].startswith(">  <id>")]
 
+    # Enamine tag names drift across catalog releases: older SDFs use `<id>`,
+    # newer ones use `<Catalog_ID>` (and similarly `<smiles>` vs `<SMILES>`).
+    # Auto-detect from a candidate list so the script works regardless of release.
+    def find_tag(candidates: list[str]) -> str:
+        for tag in candidates:
+            prefix = f">  <{tag}>"
+            if any(line.startswith(prefix) for line in lines[:200_000]):
+                return prefix
+        raise RuntimeError(f"None of {candidates} found as SDF tags. Inspect the SDF and add the right tag name.")
+
+    smiles_prefix = find_tag(["smiles", "SMILES", "Smiles"])
+    id_prefix = find_tag(["Catalog_ID", "Catalog ID", "id", "ID", "idnumber"])
+    print(f"Using SDF tags: smiles={smiles_prefix!r}, id={id_prefix!r}")
+
+    smiles_list = [lines[i].strip() for i in tqdm(range(1, len(lines))) if lines[i - 1].startswith(smiles_prefix)]
+    ids = [lines[i].strip() for i in tqdm(range(1, len(lines))) if lines[i - 1].startswith(id_prefix)]
+
+    print(len(smiles_list), len(ids))
     assert len(smiles_list) == len(ids), "sdf file error, number of <smiles> and <id> should be matched"
     print("Including Mols:", len(smiles_list))
 
