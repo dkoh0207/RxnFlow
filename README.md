@@ -64,6 +64,185 @@ We support two building block libraries.
 We provide some pre-trained GFlowNet models which are trained on QED and pocket-conditional proxy (see [./weights/README.md](weights/README.md)).
 Each model weight is also automatically downloaded through its name.
 
+## CLI Reference
+
+After `pip install -e .` the package installs an `rxnflow` binary with two subcommand groups: `rxnflow train` for online optimization and `rxnflow sample` for inference. All commands accept `-h`/`--help`; the package version is shown by `rxnflow --version`.
+
+Both hyphenated and underscored long flags are accepted (e.g. `--out-dir` and `--out_dir` map to the same option), so existing shell invocations from before the CLI was introduced keep working. The legacy `python scripts/<name>.py …` paths are also preserved as thin shims that call into the same click commands — there is a single source of truth for behavior.
+
+### `rxnflow train` — online optimization
+
+| Subcommand | Purpose |
+|---|---|
+| [`unidock`](#rxnflow-train-unidock) | Single-objective Vina docking optimization (UniDock). |
+| [`unidock-moo`](#rxnflow-train-unidock-moo) | Multi-objective Vina×QED (multiplicative reward). |
+| [`unidock-mogfn`](#rxnflow-train-unidock-mogfn) | Multi-objective Vina/QED via MOGFN (weighted-sum). |
+| [`seh`](#rxnflow-train-seh) | SEH proxy single-objective optimization. |
+| [`pretrain-qed`](#rxnflow-train-pretrain-qed) | QED pretraining for drug-likeness. |
+| [`pocket`](#rxnflow-train-pocket) | Pocket-conditional GFlowNet training (CrossDocked DB). |
+| [`few-shot-unidock`](#rxnflow-train-few-shot-unidock) | Few-shot Vina×QED fine-tuning from a pretrained model. |
+
+#### `rxnflow train unidock`
+
+Vina optimization with GPU-accelerated UniDock.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-p, --protein` | path (required) | — | Protein PDB path. |
+| `-l, --ref-ligand` | path | — | Reference ligand path (required if `--center` missing). |
+| `-c, --center X Y Z` | 3 floats | — | Pocket center coordinates. |
+| `-s, --size X Y Z` | 3 floats | `22.5 22.5 22.5` | Search box size. |
+| `--search-mode` | `fast`\|`balance`\|`detail` | `fast` | UniDock search mode. |
+| `--filter` | `null`\|`lipinski`\|`veber` | `lipinski` | Drug filter rule. |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `-n, --num-iterations` | int | `1000` | Training iterations (64 mols/iter). |
+| `--subsampling-ratio` | float | `0.02` | Action subsampling ratio (lower = less memory, higher variance). |
+| `--pretrained-model` | str | — | Pretrained model name or path (auto-download by name). |
+| `--wandb` | str | — | wandb job name (enables wandb when set). |
+| `--debug` | flag | off | Overwrite existing experiment dir. |
+
+#### `rxnflow train unidock-moo`
+
+Vina-QED multi-objective optimization with GPU-accelerated UniDock (multiplicative reward, `R = QED × Vina_norm`).
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-p, --protein` | path (required) | — | Protein PDB path. |
+| `-l, --ref-ligand` | path | — | Reference ligand path (required if `--center` missing). |
+| `-c, --center X Y Z` | 3 floats | — | Pocket center coordinates. |
+| `-s, --size X Y Z` | 3 floats | `22.5 22.5 22.5` | Search box size. |
+| `--search-mode` | `fast`\|`balance`\|`detail` | `fast` | UniDock search mode. |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `-n, --num-iterations` | int | `1000` | Training iterations. |
+| `--subsampling-ratio` | float | `0.02` | Action subsampling ratio. |
+| `--pretrained-model` | str | — | Pretrained model name or path. |
+| `--wandb` | str | — | wandb job name. |
+| `--debug` | flag | off | Overwrite existing experiment dir. |
+
+#### `rxnflow train unidock-mogfn`
+
+Vina-QED multi-objective optimization via MOGFN (`R = α·QED + (1-α)·Vina_norm`).
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-p, --protein` | path (required) | — | Protein PDB path. |
+| `-l, --ref-ligand` | path | — | Reference ligand path (required if `--center` missing). |
+| `-c, --center X Y Z` | 3 floats | — | Pocket center coordinates. |
+| `-s, --size X Y Z` | 3 floats | `22.5 22.5 22.5` | Search box size. |
+| `--search-mode` | `fast`\|`balance`\|`detail` | `fast` | UniDock search mode. |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `-n, --num-iterations` | int | `1000` | Training iterations. |
+| `--subsampling-ratio` | float | `0.02` | Action subsampling ratio. |
+| `--wandb` | str | — | wandb job name. |
+| `--debug` | flag | off | Overwrite existing experiment dir. |
+
+#### `rxnflow train seh`
+
+SEH proxy single-objective optimization.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `-n, --num-iterations` | int | `10000` | Training iterations. |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `--subsampling-ratio` | float | `0.01` | Action subsampling ratio. |
+| `--wandb` | str | — | wandb job name. |
+| `--debug` | flag | off | Overwrite existing experiment dir. |
+
+#### `rxnflow train pretrain-qed`
+
+QED pretraining for drug-likeness.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `--temperature` | str | `uniform-0-64` | Temperature spec, e.g. `constant-32`, `uniform-0-64`, `loguniform-1-64`. |
+| `-n, --num-iterations` | int | `50000` | Training iterations. |
+| `--batch-size` | int | `128` | Batch size (memory-variance trade-off). |
+| `--subsampling-ratio` | float | `0.05` | Action subsampling ratio. |
+| `--wandb` | str | — | wandb job name. |
+| `--debug` | flag | off | Overwrite existing experiment dir; print every step. |
+
+#### `rxnflow train pocket`
+
+Pocket-conditional GFlowNet training using a CrossDocked-style protein DB and the TacoGFN/QVina/ZINCDock15M proxy.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--db` | path | `./data/experiments/CrossDocked2020/train_db.pt` | Pocket DB path. |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `-n, --num-iterations` | int | `50000` | Training iterations. |
+| `--batch-size` | int | `64` | Batch size. |
+| `--subsampling-ratio` | float | `0.02` | Action subsampling ratio. |
+| `--wandb` | str | — | wandb job name. |
+| `--debug` | flag | off | Overwrite existing experiment dir; print every step. |
+
+#### `rxnflow train few-shot-unidock`
+
+Few-shot Vina-QED fine-tuning from a pretrained pocket-conditional model. Action embedding is frozen, so a higher subsampling ratio is feasible.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-p, --protein` | path (required) | — | Protein PDB path. |
+| `-l, --ref-ligand` | path | — | Reference ligand path (required if `--center` missing). |
+| `-c, --center X Y Z` | 3 floats | — | Pocket center coordinates. |
+| `-s, --size X Y Z` | 3 floats | `22.5 22.5 22.5` | Search box size. |
+| `--search-mode` | `fast`\|`balance`\|`detail` | `fast` | UniDock search mode. |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `-o, --out-dir` | path (required) | — | Output / log directory. |
+| `--pretrained-model` | str | `qvina-unif-0-64` | Pretrained model name or path (always required for few-shot). |
+| `-n, --num-iterations` | int | `1000` | Training iterations. |
+| `--subsampling-ratio` | float | `0.04` | Action subsampling ratio (higher than from-scratch since action embedding is frozen). |
+| `--wandb` | str | — | wandb job name. |
+| `--debug` | flag | off | Overwrite existing experiment dir; print every step. |
+
+### `rxnflow sample` — inference
+
+| Subcommand | Purpose |
+|---|---|
+| [`unidock`](#rxnflow-sample-unidock) | Inference sampling from a UniDock-trained checkpoint. |
+| [`zero-shot`](#rxnflow-sample-zero-shot) | Zero-shot pocket-conditional sampling with the QED-Docking proxy. |
+
+#### `rxnflow sample unidock`
+
+Inference sampling from a checkpoint produced by `rxnflow train unidock` (or its variants). Output extension selects the format: `.csv` triggers reward calculation, `.smi` writes SMILES only.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-m, --model-path` | path (required) | — | Model checkpoint path. |
+| `-n, --num-samples` | int (required) | — | Number of samples to generate. |
+| `-o, --out-path` | path (required) | — | Output path (`.csv` enables docking score; `.smi` writes SMILES only). |
+| `--env-dir` | path | (from checkpoint) | Override environment directory. |
+| `--subsampling-ratio` | float | `0.1` | Action subsampling ratio (higher = more exploitation). |
+| `--cuda` | flag | off | Use CUDA acceleration. |
+| `-p, --protein` | path | (from checkpoint) | Override protein PDB. |
+| `-c, --center X Y Z` | 3 floats | (from checkpoint) | Override pocket center. |
+| `-l, --ref-ligand` | path | (from checkpoint) | Override reference ligand. |
+| `-s, --size X Y Z` | 3 floats | `22.5 22.5 22.5` | Override search box size. |
+
+#### `rxnflow sample zero-shot`
+
+Zero-shot pocket-conditional sampling with the QED-Docking proxy (auto-downloaded by name).
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-p, --protein` | path (required) | — | Protein PDB path. |
+| `-l, --ref-ligand` | path | — | Reference ligand path (required if `--center` missing). |
+| `-c, --center X Y Z` | 3 floats | — | Pocket center coordinates. |
+| `--model-path` | str | `qvina-unif-0-64` | Checkpoint name (auto-download) or filesystem path. |
+| `-n, --num-samples` | int | `100` | Number of samples to generate. |
+| `-o, --out-path` | path (required) | — | Output path (`.csv` writes QED+proxy reward; `.smi` writes SMILES only). |
+| `--env-dir` | path | `./data/envs/catalog` | Environment directory. |
+| `--subsampling-ratio` | float | `0.1` | Action subsampling ratio. |
+| `--temperature` | str | `uniform-16-64` | Temperature spec, e.g. `uniform-16-64`, `uniform-32-64`, `constant-32`. |
+| `--cuda` | flag | off | Use CUDA acceleration. |
+| `--seed` | int | `1` | Random seed. |
+
 ## Experiments
 
 <details>
@@ -204,10 +383,13 @@ To perform multi-objective optimization for Vina and QED, we provide two reward 
 
 #### Example (KRAS G12C mutation)
 
+> Build an environment first (see [Data Preparation](#data-preparation)) and pass its path via `--env_dir`. The default `./data/envs/catalog` does not exist out of the box. Examples below assume `./data/envs/zincfrag` (use `./data/envs/zincfrag-debug` for a fast smoke test).
+
 - Use center coordinates
 
   ```bash
   python scripts/opt_unidock.py -o ./log/kras --filter veber \
+    --env_dir ./data/envs/zincfrag \
     -p ./data/examples/6oim_protein.pdb -c 1.872 -8.260 -1.361
   ```
 
@@ -215,6 +397,7 @@ To perform multi-objective optimization for Vina and QED, we provide two reward 
 
   ```bash
   python scripts/opt_unidock_mogfn.py -o ./log/kras_moo \
+    --env_dir ./data/envs/zincfrag \
     -p ./data/examples/6oim_protein.pdb -l ./data/examples/6oim_ligand.pdb
   ```
 
@@ -255,13 +438,17 @@ python scripts/sampling_zeroshot.py \
 - `csv`: save molecules with their rewards (GPU is recommended)
 
   ```bash
-  python scripts/sampling_zeroshot.py -o out.csv -p ./data/examples/6oim_protein.pdb -c 1.872 -8.260 -1.361 --cuda
+  python scripts/sampling_zeroshot.py -o out.csv \
+    --env_dir ./data/envs/zincfrag \
+    -p ./data/examples/6oim_protein.pdb -c 1.872 -8.260 -1.361 --cuda
   ```
 
 - `smi`: save molecules only (CPU: 0.06s/mol, GPU: 0.04s/mol)
 
   ```bash
-  python scripts/sampling_zeroshot.py -o out.smi -p ./data/examples/6oim_protein.pdb -l ./data/examples/6oim_ligand.pdb
+  python scripts/sampling_zeroshot.py -o out.smi \
+    --env_dir ./data/envs/zincfrag \
+    -p ./data/examples/6oim_protein.pdb -l ./data/examples/6oim_ligand.pdb
   ```
 
 #### Training

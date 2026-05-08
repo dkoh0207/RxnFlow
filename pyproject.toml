@@ -27,7 +27,12 @@ dependencies = [
     "tensorboard",
     "gitpython",
     "botorch",
+    "gdown",
+    "click>=8.1",
 ]
+
+[project.scripts]
+rxnflow = "rxnflow.cli:main"
 
 [project.optional-dependencies]
 unidock = [
@@ -44,6 +49,9 @@ dev = [
 ]
 # TODO: finish benchmark setting
 # synbench = ["synbench @ git+https://github.com/SeonghwanSeo/SynBench.git@init"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.black]
 line-length = 120
