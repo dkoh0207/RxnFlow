@@ -498,6 +498,72 @@ The training/sampling scripts are provided in `experiments/`.
 
 </details>
 
+## Monitoring training progress
+
+Every training script writes per-iteration metrics to TensorBoard event files inside the `--out_dir` you pass with `-o`. To watch the curves live, run TensorBoard in a second terminal while training is running:
+
+```bash
+conda activate rxnflow
+tensorboard --logdir <out_dir>          # e.g.  tensorboard --logdir ./log/kras
+# then open http://localhost:6006
+```
+
+To compare multiple runs side-by-side, point `--logdir` at the parent directory (e.g. `./log`).
+
+### Remote access via SSH
+
+TensorBoard binds to `127.0.0.1:6006` by default, so a remote browser cannot reach it without a tunnel. Use SSH local port forwarding (preferred — keeps the dashboard private to your SSH session):
+
+```bash
+# from your laptop — open the tunnel, then SSH in as usual
+ssh -L 6006:localhost:6006 user@your-server
+
+# on the server, start TensorBoard normally
+tensorboard --logdir ./log/kras
+```
+
+Then open `http://localhost:6006` in your **local** browser.
+
+- Already connected? Add forwarding to a live session with the SSH escape sequence: type `~C` at the start of a line, then enter `-L 6006:localhost:6006`.
+- Port 6006 busy on your laptop? Use a different local port: `ssh -L 16006:localhost:6006 user@your-server`, then open `http://localhost:16006`.
+- For multiple concurrent runs, give each TensorBoard a unique port via `tensorboard --logdir ./log/run_b --port 6007` and forward each one (`-L 6006:... -L 6007:...`).
+
+If SSH forwarding is impossible, you can bind TensorBoard to all interfaces with `tensorboard --logdir <out_dir> --bind_all` and reach it at `http://<server-ip>:6006` — but TensorBoard has **no authentication**, so only do this on networks you trust and where firewall rules allow inbound on 6006.
+
+### Useful scalars
+
+| Scalar | What it means |
+|---|---|
+| `train_loss` | Trajectory-balance loss. Diagnoses training stability — but a flat loss does **not** mean the policy isn't improving. |
+| `train_grad_norm` / `train_grad_norm_clip` | Gradient health. Persistent clipping (clip > 0) signals instability — try a lower learning rate. |
+| `train_sampled_vina_avg` *(Vina tasks)* | Mean **raw** Vina score (kcal/mol, **lower = better**) of the 64-molecule batch this iteration. Noisy but reflects current-policy quality. |
+| `train_top10_vina` / `train_top100_vina` / `train_top1000_vina` *(Vina tasks)* | Mean Vina of the best N molecules seen so far. The smoothest "training accuracy" signal — should drift downward as the policy learns. |
+| `train_pass_constraint` *(when `--filter` is set)* | Fraction of generated molecules passing the drug filter (lipinski/veber). Typically rises to ~0.3–0.6. |
+
+The Vina-specific scalars come from `VinaTrainer.add_extra_info` in `src/rxnflow/tasks/unidock_vina.py` and are available for every script that wraps `VinaTrainer` (`opt_unidock.py`, `opt_unidock_moo.py`, `opt_unidock_mogfn.py`, `few_shot_unidock_moo.py`).
+
+### Sign convention (Vina)
+
+| Source | Field | Sign |
+|---|---|---|
+| TensorBoard scalars | `train_sampled_vina_avg`, `train_top<N>_vina` | raw Vina, **negative is better** |
+| `<out_dir>/docking/oracle<N>.sdf` | `<docking_score>` SDF property | raw Vina, **negative is better** |
+| `<out_dir>/train/generated_objs_*.db` | `fr_0` column | **negated** (positive, larger is better) — GFlowNet rewards must be non-negative |
+
+### Other artifacts in `<out_dir>`
+
+- `train.log` — text log mirroring stdout (`tail -f` it for a no-GUI view of iteration progress).
+- `config.yaml` — full resolved hyperparameters, including CLI overrides and git hash.
+- `model_state.pt` — latest checkpoint (model + sampling-model weights + config + step). Set `cfg.store_all_checkpoints=True` to also keep `model_state_<step>.pt` snapshots.
+- `train/generated_objs_<wid>.db` — SQLite of every generated molecule (SMILES, reward `r`, objective values `fr_0`, conditioning info). Read with `gflownet.utils.sqlite_log.read_all_results("<out_dir>/train")`.
+- `docking/oracle<N>.sdf` *(Vina tasks)* — 3D-embedded molecules with `<docking_score>`, one file per docking batch.
+- `pareto.pt` *(MOO tasks only)* — Pareto front, hypervolume / IGD metrics, and SMILES of front points.
+
+### Caveats
+
+- The replay buffer warms up before the first gradient step (`opt_unidock.py` defaults to 1280 molecules / 20 iterations of warmup). During warmup the log shows `iteration N : warming up replay buffer ...` and **no `train_*` scalars are emitted yet** — run at least `-n 200` to see meaningful curves.
+- `--out_dir` must not exist on first run (the docking task creates `<out_dir>/docking/` without `exist_ok`). Pass `--debug` to allow overwriting an existing directory.
+
 ## Technical Report
 
 TBA; We will provide the technical report including a new benchmark test using our new building block set.
