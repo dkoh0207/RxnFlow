@@ -105,7 +105,11 @@ class RxnFlowTrainer(CustomStandardOnlineTrainer):
         set_worker_env("task", self.task)
 
     def setup_env(self):
-        self.env = SynthesisEnv(self.cfg.env_dir, self.cfg.num_workers_retrosynthesis)
+        self.env = SynthesisEnv(
+            self.cfg.env_dir,
+            self.cfg.num_workers_retrosynthesis,
+            scaffold_smi=self.cfg.algo.initial_scaffold,
+        )
 
     def setup_env_context(self):
         self.ctx = SynthesisEnvContext(self.env, num_cond_dim=self.task.num_cond_dim)

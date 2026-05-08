@@ -134,7 +134,7 @@ class RxnFlowSampler:
         raise NotImplementedError()
 
     def setup_env(self):
-        self.env = SynthesisEnv(self.cfg.env_dir)
+        self.env = SynthesisEnv(self.cfg.env_dir, scaffold_smi=self.cfg.algo.initial_scaffold)
 
     def setup_env_context(self):
         self.ctx = SynthesisEnvContext(self.env, num_cond_dim=self.task.num_cond_dim)

@@ -47,7 +47,7 @@ class SynthesisEnv(GraphBuildingEnv):
     having the agent select a reaction template. Masks ensure that only valid templates are selected.
     """
 
-    def __init__(self, env_dir: str | Path, num_workers: int = 4):
+    def __init__(self, env_dir: str | Path, num_workers: int = 4, scaffold_smi: str | None = None):
         """Environment for Synthesis-oriented generation
 
         Parameters
@@ -56,6 +56,11 @@ class SynthesisEnv(GraphBuildingEnv):
             root directory of synthesis environment
         num_workers : int
             number of workers for retrosynthetic analysis
+        scaffold_smi : str | None
+            SMILES of an initial scaffold molecule. If set, ``new()`` returns a MolGraph seeded
+            with this scaffold instead of the blank state. The SMILES is canonicalized once at
+            init time so that downstream string comparisons (e.g. in retrosynthesis truncation)
+            match RDKit's canonical form. Defaults to None (legacy blank-state behavior).
         """
         """A reaction template and building block environment instance"""
         self.env_dir = env_dir = Path(env_dir)
@@ -108,10 +113,23 @@ class SynthesisEnv(GraphBuildingEnv):
             1 + len(self.unirxn_list) + sum(indices.shape[0] for indices in self.birxn_block_indices.values())
         )
 
-        self.retro_analyzer = MultiRetroSyntheticAnalyzer.create(self.protocols, self.blocks, num_workers=num_workers)
+        # Canonicalize the scaffold once so all downstream comparisons (notably the
+        # retrosynthesis truncation in RetroSyntheticAnalyzer.__dfs) match RDKit's
+        # canonical form. None passes through unchanged for backwards compatibility.
+        if scaffold_smi is not None:
+            mol = Chem.MolFromSmiles(scaffold_smi)
+            if mol is None:
+                raise ValueError(f"Invalid scaffold SMILES: {scaffold_smi!r}")
+            self.scaffold_smi: str | None = Chem.MolToSmiles(mol)
+        else:
+            self.scaffold_smi = None
+
+        self.retro_analyzer = MultiRetroSyntheticAnalyzer.create(
+            self.protocols, self.blocks, num_workers=num_workers, scaffold_smi=self.scaffold_smi
+        )
 
     def new(self) -> MolGraph:
-        return MolGraph("")
+        return MolGraph(self.scaffold_smi or "")
 
     def step(self, g: MolGraph, action: RxnAction) -> MolGraph:
         """Applies the action to the current state and returns the next state.

@@ -75,6 +75,15 @@ import click
     default=None,
     help="Pretrained Model Path",
 )
+@click.option(
+    "--initial-scaffold",
+    "--initial_scaffold",
+    "initial_scaffold",
+    type=str,
+    default=None,
+    help="SMILES of an initial scaffold molecule. If set, every trajectory starts from this molecule "
+    "instead of the blank state.",
+)
 @click.option("--wandb", "wandb_name", type=str, default=None, help="wandb job name")
 @click.option("--debug", is_flag=True, help="For debugging option")
 def unidock_moo(
@@ -88,6 +97,7 @@ def unidock_moo(
     num_iterations,
     subsampling_ratio,
     pretrained_model,
+    initial_scaffold,
     wandb_name,
     debug,
 ):
@@ -108,6 +118,7 @@ def unidock_moo(
     config.num_training_steps = num_iterations
     config.algo.num_from_policy = 64
     config.algo.action_subsampling.sampling_ratio = subsampling_ratio
+    config.algo.initial_scaffold = initial_scaffold
 
     # docking info
     config.task.docking.protein_path = protein

@@ -59,6 +59,9 @@ class AlgoConfig(StrictDataClass):
         The probability of taking a random action during validation
     sampling_tau : float
         The EMA factor for the sampling model (theta_sampler = tau * theta_sampler + (1-tau) * theta)
+    initial_scaffold : str | None
+        SMILES of an initial scaffold molecule. If set, every trajectory starts from this molecule
+        instead of the blank state. Defaults to None (legacy blank-state behavior).
     """
 
     method: str = "TB"
@@ -73,5 +76,6 @@ class AlgoConfig(StrictDataClass):
     train_det_after: int | None = None
     valid_random_action_prob: float = 0.0
     sampling_tau: float = 0.0
+    initial_scaffold: str | None = None
     tb: TBConfig = field(default_factory=TBConfig)
     action_subsampling: SubsamplingConfig = field(default_factory=SubsamplingConfig)

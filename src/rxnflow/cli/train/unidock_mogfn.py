@@ -67,6 +67,15 @@ import click
     show_default=True,
     help="Action Subsampling Ratio. Memory-variance trade-off (Smaller ratio increase variance; default: 0.02)",
 )
+@click.option(
+    "--initial-scaffold",
+    "--initial_scaffold",
+    "initial_scaffold",
+    type=str,
+    default=None,
+    help="SMILES of an initial scaffold molecule. If set, every trajectory starts from this molecule "
+    "instead of the blank state.",
+)
 @click.option("--wandb", "wandb_name", type=str, default=None, help="wandb job name")
 @click.option("--debug", is_flag=True, help="For debugging option")
 def unidock_mogfn(
@@ -79,6 +88,7 @@ def unidock_mogfn(
     out_dir,
     num_iterations,
     subsampling_ratio,
+    initial_scaffold,
     wandb_name,
     debug,
 ):
@@ -95,6 +105,7 @@ def unidock_mogfn(
     config.num_training_steps = num_iterations
     config.algo.num_from_policy = 64
     config.algo.action_subsampling.sampling_ratio = subsampling_ratio
+    config.algo.initial_scaffold = initial_scaffold
 
     # docking info
     config.task.docking.protein_path = protein

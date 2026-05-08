@@ -55,7 +55,28 @@ import click
     show_default=True,
     help="Search Box Size (--size X Y Z)",
 )
-def unidock(model_path, num_samples, out_path, env_dir, subsampling_ratio, cuda, protein, center, ref_ligand, size):
+@click.option(
+    "--initial-scaffold",
+    "--initial_scaffold",
+    "initial_scaffold",
+    type=str,
+    default=None,
+    help="SMILES of an initial scaffold molecule. If set, every sampled trajectory starts from this "
+    "molecule instead of the blank state.",
+)
+def unidock(
+    model_path,
+    num_samples,
+    out_path,
+    env_dir,
+    subsampling_ratio,
+    cuda,
+    protein,
+    center,
+    ref_ligand,
+    size,
+    initial_scaffold,
+):
     import os
     import tempfile
     import time
@@ -76,6 +97,7 @@ def unidock(model_path, num_samples, out_path, env_dir, subsampling_ratio, cuda,
     # low subsampling ratio: force exploration
     # high subsampling ratio: more exploitation
     config.algo.action_subsampling.sampling_ratio = subsampling_ratio
+    config.algo.initial_scaffold = initial_scaffold
 
     if env_dir is not None:
         config.env_dir = env_dir

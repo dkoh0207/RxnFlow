@@ -60,12 +60,14 @@ class RetroSyntheticAnalyzer:
         blocks: list[str],
         approx: bool = True,
         max_decomposes: int = 2,
+        scaffold_smi: str | None = None,
     ):
         self.protocols: list[Protocol] = protocols
         self.approx: bool = approx  # Fast analyzing
         self.__cache_success: Cache = Cache(100_000)
         self.__cache_fail: Cache = Cache(1_000_000)
         self.max_decomposes: int = max_decomposes
+        self.scaffold_smi: str | None = scaffold_smi
 
         # For Fast Search
         self.__block_search: dict[int, dict[str, int]] = {}
@@ -134,6 +136,13 @@ class RetroSyntheticAnalyzer:
         depth: int,
         known_branches: list[tuple[RxnAction, RetroSynthesisTree]] | None = None,
     ) -> RetroSynthesisTree | None:
+        # Treat the user-supplied scaffold as a virtual building block: any backward
+        # decomposition path reaching it terminates as a leaf. This keeps log-prob
+        # weights consistent regardless of whether the scaffold is reachable through
+        # reaction templates.
+        if self.scaffold_smi is not None and smiles == self.scaffold_smi:
+            return RetroSynthesisTree(smiles)
+
         # Check state
         if (not self.check_depth(depth)) or (len(smiles) == 0):
             return None
@@ -242,8 +251,9 @@ class MultiRetroSyntheticAnalyzer:
         approx: bool = True,
         max_decomposes: int = 2,
         num_workers: int = 4,
+        scaffold_smi: str | None = None,
     ):
-        analyzer = RetroSyntheticAnalyzer(protocols, blocks, approx, max_decomposes)
+        analyzer = RetroSyntheticAnalyzer(protocols, blocks, approx, max_decomposes, scaffold_smi=scaffold_smi)
         return cls(analyzer, num_workers)
 
     def _init_worker(self, base_analyzer):
